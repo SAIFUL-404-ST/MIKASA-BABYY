@@ -12,7 +12,7 @@ module.exports.config = {
   countDown: 0,
   role: 0,
   description: "better then all sim simi",
-  category: "chat",
+  category: "utility",
   guide: {
     en: "{pn} [anyMessage]"
   }
@@ -167,7 +167,7 @@ module.exports.onChat = async ({ api, event, message }) => {
 
         return api.sendMessage(msg, event.threadID, (error, info) => {
 
-          api.setMessageReaction("😍", event.messageID, () => {}, true);
+          api.setMessageReaction("😽", event.messageID, () => {}, true);
 
           global.GoatBot.onReply.set(info.messageID, {
             commandName: "bby",
@@ -184,7 +184,7 @@ module.exports.onChat = async ({ api, event, message }) => {
 
       return api.sendMessage(a, event.threadID, (error, info) => {
 
-        api.setMessageReaction("😍", event.messageID, () => {}, true);
+        api.setMessageReaction("😽", event.messageID, () => {}, true);
 
         global.GoatBot.onReply.set(info.messageID, {
           commandName: "bby",
