@@ -1,20 +1,4 @@
-// 💰 Standard Shorthand Parser Baby (Complete Edition)
-const parseAmount = (str) => {
-  if (!str) return NaN;
-  str = str.toLowerCase().replace(/\s+/g, "");
-  const suffixes = {
-    vg: 1e63, nod: 1e60, ocd: 1e57, spd: 1e54, sxd: 1e51, qid: 1e48, qad: 1e45,
-    td: 1e42, dd: 1e39, ud: 1e36, dc: 1e33, no: 1e30, oc: 1e27, sp: 1e24,
-    sx: 1e21, qi: 1e18, qa: 1e15, t: 1e12, b: 1e9, m: 1e6, k: 1e3
-  };
-  let matched = Object.keys(suffixes).sort((a, b) => b.length - a.length).find(suf => str.endsWith(suf));
-  let multiplier = matched ? suffixes[matched] : 1;
-  if (matched) str = str.slice(0, -matched.length);
-  let num = parseFloat(str);
-  return isNaN(num) ? NaN : num * multiplier;
-};
-
-// ✨ Bold Sans-Serif Font Baby
+// ✨ Bold Sans-Serif Font
 const f = (text) => {
   if (text === undefined || text === null) return "";
   const fonts = {
@@ -30,7 +14,21 @@ const f = (text) => {
   return String(text).split('').map(c => fonts[c] || c).join('');
 };
 
-// 🏦 Standard Shorthand Formatter Baby (Complete Edition)
+const parseAmount = (str) => {
+  if (!str) return NaN;
+  str = str.toLowerCase().replace(/\s+/g, "");
+  const suffixes = {
+    vg: 1e63, nod: 1e60, ocd: 1e57, spd: 1e54, sxd: 1e51, qid: 1e48, qad: 1e45,
+    td: 1e42, dd: 1e39, ud: 1e36, dc: 1e33, no: 1e30, oc: 1e27, sp: 1e24,
+    sx: 1e21, qi: 1e18, qa: 1e15, t: 1e12, b: 1e9, m: 1e6, k: 1e3
+  };
+  let matched = Object.keys(suffixes).sort((a, b) => b.length - a.length).find(suf => str.endsWith(suf));
+  let multiplier = matched ? suffixes[matched] : 1;
+  if (matched) str = str.slice(0, -matched.length);
+  let num = parseFloat(str);
+  return isNaN(num) ? NaN : num * multiplier;
+};
+
 function formatMoney(num) {
   if (num === undefined || num === null || isNaN(num)) return "0";
   const suffixes = [
@@ -52,103 +50,120 @@ function formatMoney(num) {
   return f(Math.floor(num).toString());
 }
 
-// ✈️ Aviator Crash Point Generator — Realistic Distribution Baby
-function generateCrashPoint() {
-  const r = Math.random();
-  if (r < 0.10) return 1.00; // 10% instant crash
-  const raw = 0.97 / (1 - Math.random());
-  return Math.round(Math.max(1.01, Math.min(raw, 200)) * 100) / 100;
-}
+const teams = [
+  { flag: "🇧🇩", name: "Bangladesh" },
+  { flag: "🇮🇳", name: "India" },
+  { flag: "🇧🇷", name: "Brazil" },
+  { flag: "🇦🇷", name: "Argentina" },
+  { flag: "🇩🇪", name: "Germany" },
+  { flag: "🇫🇷", name: "France" },
+  { flag: "🇪🇸", name: "Spain" },
+  { flag: "🇮🇹", name: "Italy" },
+  { flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", name: "England" },
+  { flag: "🇳🇱", name: "Netherlands" },
+  { flag: "🇵🇹", name: "Portugal" },
+  { flag: "🇧🇪", name: "Belgium" },
+  { flag: "🇺🇾", name: "Uruguay" },
+  { flag: "🇨🇴", name: "Colombia" },
+  { flag: "🇲🇽", name: "Mexico" }
+];
 
-// 📊 Progress Bar Baby
-function buildBar(current, target) {
-  const progress = Math.min((current - 1.00) / (target - 1.00), 1);
-  const filled = Math.round(progress * 10);
-  return "[" + f("█".repeat(filled) + "░".repeat(10 - filled)) + "]";
-}
+const delay = ms => new Promise(r => setTimeout(r, ms));
 
-// 🎬 Build Frame Message Baby
-function buildFrame(betAmount, targetMult, currentMult, status) {
-  const bar = buildBar(currentMult, targetMult);
-  let statusLine = "";
-  if (status === "flying")  statusLine = `✈️  ${f("Flying...")}  ${f(currentMult.toFixed(2) + "x")} 📈`;
-  if (status === "won")     statusLine = `🛬  ${f("Cashed out at")} ${f(currentMult.toFixed(2) + "x!")}`;
-  if (status === "crashed") statusLine = `💥  ${f("Crashed at")} ${f(currentMult.toFixed(2) + "x!")}`;
-  if (status === "instant") statusLine = `💥  ${f("Instant Crash!")}`;
+function matchFrame(home, away, homeScore, awayScore, status) {
+  const scoreText = (homeScore === "?" && awayScore === "?")
+    ? `? - ?`
+    : `${f(homeScore)} - ${f(awayScore)}`;
+
+  const statusText = {
+    kickoff: "⚽ " + f("Kick Off..."),
+    half1:   "🔴 " + f("1st Half — Action"),
+    final:   "⏹️ " + f("Full Time")
+  }[status] || "";
 
   return (
-    `✈️ ${f("AVIATOR BET — BABY")}\n` +
+    `🏆 ${f("INTERNATIONAL FRIENDLY")}\n` +
     `━━━━━━━━━━━━━━━━━━━\n` +
-    `💵 ${f("Bet:")} ${formatMoney(betAmount)}  ${f("Target:")} ${f(targetMult.toFixed(2) + "x")}\n\n` +
-    `${bar} ${f(currentMult.toFixed(2) + "x")} / ${f(targetMult.toFixed(2) + "x")}\n\n` +
-    `${statusLine}`
+    `${home.flag} ${f(home.name)}  ${scoreText}  ${away.flag} ${f(away.name)}\n` +
+    `${statusText}`
   );
 }
 
-const delay = (ms) => new Promise(r => setTimeout(r, ms));
+async function processBet(api, event, userData, betAmount, home, away, userTeam, usersData) {
+  const { senderID, threadID, messageID } = event;
+
+  const BET_CAP = 10_000_000;
+  if (betAmount > BET_CAP) {
+    userData.money -= betAmount;
+    userData.data.betLimit.count += 1;
+    await usersData.set(senderID, { money: userData.money, data: userData.data });
+    return api.sendMessage(`🚨 ${f("FIXING SCANDAL!")}\nMatch void. Lost: ${formatMoney(betAmount)}`, threadID, messageID);
+  }
+
+  const roll = Math.random();
+  let outcome = roll < 0.05 ? "jackpot" : (roll < 0.45 ? "win" : "lose");
+
+  const userIsHome = (userTeam.name === home.name);
+  let homeScore, awayScore;
+
+  if (outcome === "jackpot") {
+    homeScore = userIsHome ? 3 : 0; awayScore = userIsHome ? 0 : 3;
+  } else if (outcome === "win") {
+    homeScore = userIsHome ? 2 : 1; awayScore = userIsHome ? 1 : 2;
+  } else {
+    homeScore = userIsHome ? 0 : 2; awayScore = userIsHome ? 2 : 0;
+  }
+
+  const userWon = outcome !== "lose";
+  const winnings = userWon ? betAmount * (outcome === "jackpot" ? 3 : 2) : 0;
+  const netGain = userWon ? winnings - betAmount : -betAmount;
+
+  const initMsg = await api.sendMessage(matchFrame(home, away, "?", "?", "kickoff"), threadID, messageID);
+  const mid = initMsg.messageID;
+
+  const steps = [
+    { progress: 0.5, status: "half1" },
+    { progress: 1.0, status: "final" }
+  ];
+
+  for (const step of steps) {
+    await delay(1500);
+    let curH = step.progress === 1.0 ? homeScore : Math.floor(homeScore / 2);
+    let curA = step.progress === 1.0 ? awayScore : Math.floor(awayScore / 2);
+
+    let frame = matchFrame(home, away, curH, curA, step.status);
+    if (step.status === "final") {
+      userData.money += netGain;
+      userData.data.betLimit.count += 1;
+      await usersData.set(senderID, { money: userData.money, data: userData.data });
+      frame += `\n\n${userWon ? "✅" : "❌"} ${userWon ? f("WIN") : f("LOST")}\n💵 ${f("Payout")}: ${formatMoney(winnings)}\n💰 ${f("Balance")}: ${formatMoney(userData.money)}`;
+    }
+    await api.editMessage(frame, mid);
+  }
+}
 
 module.exports = {
   config: {
     name: "bet",
-    version: "7.0",
+    aliases: ["football", "soccer"],
+    version: "10.0",
     author: "Saif",
     category: "game",
-    countDown: 15,
-    shortDescription: "✈️ 𝐀𝐕𝐈𝐀𝐓𝐎𝐑 𝐁𝐄𝐓 𝐆𝐀𝐌𝐄 𝐁𝐀𝐁𝐘",
-    guide: { en: "{p}bet <amount> <target>\nExample: bet 5m 2.5" }
+    countDown: 5,
+    description: "⚽ Football bet — reply to pick team",
+    guide: "{pn} <amount>  — then reply with 1/2/team name"
   },
 
-  onStart: async function ({ api, event, args, usersData, role }) {
-    const { senderID, threadID, messageID, mentions, messageReply } = event;
-    const now = Date.now();
-
-    // 🔄 Admin Refresh
-    if (args[0] === "refresh" && role >= 2) {
-      let targetID = messageReply ? messageReply.senderID
-        : (Object.keys(mentions).length > 0 ? Object.keys(mentions)[0] : args[1]);
-      if (!targetID) return api.sendMessage(f("❌ Usage: bet refresh @tag or UID Baby"), threadID, messageID);
-      let tData = await usersData.get(targetID);
-      if (!tData.data) tData.data = {};
-      tData.data.betLimit = { lastReset: now, count: 0 };
-      await usersData.set(targetID, { data: tData.data });
-      return api.sendMessage(f("✅ BET LIMIT REFRESHED BABY! 🎀"), threadID, messageID);
-    }
-
-    const userData = await usersData.get(senderID);
+  onStart: async function({ api, event, args, usersData, role, commandName }) {
+    const { senderID, threadID, messageID } = event;
+    let userData = await usersData.get(senderID);
     if (!userData.data) userData.data = {};
 
-    // 📖 First Time Player — Show Rules Baby
-    if (!userData.data.betSeen) {
-      userData.data.betSeen = true;
-      await usersData.set(senderID, { data: userData.data });
-
-      return api.sendMessage(
-        `✈️ ${f("AVIATOR BET — RULES BABY")}\n` +
-        `━━━━━━━━━━━━━━━━━━━\n\n` +
-        `📌 ${f("How To Play:")}\n` +
-        f("Command: bet [amount] [target]\n") +
-        f("Example:  bet 5m 2.5\n\n") +
-        `🛫 ${f("How It Works:")}\n` +
-        f("• Plane takes off, multiplier rises\n") +
-        f("• You set a target cashout multiplier\n") +
-        f("• Plane reaches target → WIN\n") +
-        f("• Plane crashes before target → LOSE\n") +
-        f("• Higher target = bigger risk & reward!\n\n") +
-        `💰 ${f("Payout = Bet × Target Multiplier")}\n` +
-        f("Example: 5M × 2.5x = 12.5M profit!\n\n") +
-        `⏰ ${f("Daily Limit: 20 bets / 12 hours\n\n")}` +
-        `⚠️ ${f("Bet over $10M → Auto Lose (Penalty)!")}\n` +
-        f("Keep your bet under $10M Baby.\n\n") +
-        `✅ ${f("Rules seen! Type bet [amount] [target] to play Baby.")}`,
-        threadID, messageID
-      );
-    }
-
-    // 🕐 12 Hours Reset System Baby
+    const now = Date.now();
     const TWELVE_HOURS = 12 * 60 * 60 * 1000;
-    if (!userData.data.betLimit || !userData.data.betLimit.lastReset) {
-      userData.data.betLimit = { lastReset: now, count: 0 };
-    } else if (now - userData.data.betLimit.lastReset >= TWELVE_HOURS) {
+
+    // Reset 12h limit if expired
+    if (!userData.data.betLimit?.lastReset || now - userData.data.betLimit.lastReset >= TWELVE_HOURS) {
       userData.data.betLimit = { lastReset: now, count: 0 };
     }
 
@@ -156,92 +171,110 @@ module.exports = {
       const timeLeft = TWELVE_HOURS - (now - userData.data.betLimit.lastReset);
       const h = Math.floor(timeLeft / 3600000);
       const m = Math.floor((timeLeft % 3600000) / 60000);
-      return api.sendMessage(
-        f(`⚠️ Limit reached! 20/20 bets used.\n⏰ Reset in: ${h}h ${m}m Baby.`),
-        threadID, messageID
-      );
+      return api.sendMessage(f(`⚠️ Limit reached! Reset in ${h}h ${m}m.`), threadID, messageID);
     }
 
-    // 🎯 Parse Args
+    // Admin refresh
+    if (args[0] === "refresh" && role >= 2) {
+      const targetID = event.messageReply ? event.messageReply.senderID : args[1];
+      if (!targetID) return api.sendMessage(f("❌ Usage: bet refresh @tag or reply"), threadID, messageID);
+      let tData = await usersData.get(targetID);
+      if (!tData.data) tData.data = {};
+      tData.data.betLimit = { lastReset: now, count: 0 };
+      await usersData.set(targetID, { data: tData.data });
+      return api.sendMessage(f("✅ Limit refreshed!"), threadID, messageID);
+    }
+
+    // Parse amount
     const betAmount = parseAmount(args[0]);
-    const targetMult = parseFloat(args[1]);
-
     if (isNaN(betAmount) || betAmount <= 0)
-      return api.sendMessage(f("❌ Invalid amount! Usage: bet 5m 2.5 Baby."), threadID, messageID);
-    if (isNaN(targetMult) || targetMult <= 1.00)
-      return api.sendMessage(f("❌ Target must be above 1.00x! Example: bet 5m 2.5 Baby."), threadID, messageID);
-    if (targetMult > 200)
-      return api.sendMessage(f("❌ Maximum target is 200x Baby."), threadID, messageID);
-    if (betAmount > userData.money)
-      return api.sendMessage(
-        f("💰 Not enough balance! You have: ") + formatMoney(userData.money || 0),
-        threadID, messageID
+      return api.sendMessage(f("❌ Invalid amount! Example: .bet 5m"), threadID, messageID);
+    if (betAmount > (userData.money || 0))
+      return api.sendMessage(f("💰 Not enough balance!"), threadID, messageID);
+
+    // Random teams
+    let hIdx = Math.floor(Math.random() * teams.length);
+    let aIdx = Math.floor(Math.random() * teams.length);
+    while (aIdx === hIdx) aIdx = Math.floor(Math.random() * teams.length);
+    const home = teams[hIdx];
+    const away = teams[aIdx];
+
+    // Team provided inline
+    const teamInput = args.slice(1).join(" ").trim().toLowerCase();
+    if (teamInput) {
+      let userTeam = null;
+      if (teamInput === "1") userTeam = home;
+      else if (teamInput === "2") userTeam = away;
+      else userTeam = teams.find(t =>
+        t.name.toLowerCase() === teamInput || t.flag === teamInput
       );
 
-    // ⚠️ Bet Cap Penalty — Over 10M = Always Crash Baby
-    const BET_CAP = 10_000_000;
-    if (betAmount > BET_CAP) {
-      userData.money = (userData.money || 0) - betAmount;
-      userData.data.betLimit.count += 1;
-      await usersData.set(senderID, { money: userData.money, data: userData.data });
-      return api.sendMessage(
-        `✈️ ${f("AVIATOR BET — BABY")}\n` +
-        `━━━━━━━━━━━━━━━━━━━\n\n` +
-        `⚠️ ${f("PENALTY — Bet over $10M!")}\n` +
-        `💥 ${f("Auto Crashed! Plane refused to fly.")}\n\n` +
-        `❌ ${f("Lost:")} ${formatMoney(betAmount)}\n` +
-        `💰 ${f("Balance:")} ${formatMoney(userData.money)}\n` +
-        `📈 ${f("Daily:")} ${f(String(userData.data.betLimit.count))}/𝟐𝟎 ${f("Baby")}\n\n` +
-        `⚠️ ${f("Keep bet under $10M Baby!")}`,
-        threadID, messageID
-      );
+      if (!userTeam)
+        return api.sendMessage(
+          `❌ ${f("Team not in this match!")}\n` +
+          `1️⃣ ${home.flag} ${f(home.name)}\n` +
+          `2️⃣ ${away.flag} ${f(away.name)}`,
+          threadID, messageID
+        );
+
+      return processBet(api, event, userData, betAmount, home, away, userTeam, usersData);
     }
 
-    // ✈️ Generate Crash Point
-    const crashPoint = generateCrashPoint();
-    const won = crashPoint >= targetMult;
-
-    // 🚀 Send Initial Takeoff Frame
-    const sent = await api.sendMessage(
-      buildFrame(betAmount, targetMult, 1.00, "flying"),
+    // Ask user to pick — register onReply
+    const promptMsg = await api.sendMessage(
+      `⚽ ${f("Pick your team:")}\n` +
+      `1️⃣ ${home.flag} ${f(home.name)}\n` +
+      `2️⃣ ${away.flag} ${f(away.name)}\n\n` +
+      f("Reply with 1, 2, team name or flag."),
       threadID, messageID
     );
-    const msgID = sent.messageID;
 
-    // 🎬 Animate Multiplier Climbing
-    if (crashPoint === 1.00) {
-      await delay(1000);
-      await api.editMessage(buildFrame(betAmount, targetMult, 1.00, "instant"), msgID);
-    } else {
-      const peak = won ? targetMult : crashPoint;
-      // 4 animation frames between 1.00 → peak
-      for (let i = 1; i <= 4; i++) {
-        const step = parseFloat((1.00 + (peak - 1.00) * (i / 4)).toFixed(2));
-        await delay(750);
-        await api.editMessage(buildFrame(betAmount, targetMult, step, "flying"), msgID);
-      }
-      await delay(750);
+    // ✅ Use GoatBot onReply — works WITHOUT prefix
+    global.GoatBot.onReply.set(promptMsg.messageID, {
+      commandName,
+      authorID: senderID,
+      betAmount,
+      homeIdx: hIdx,
+      awayIdx: aIdx
+    });
+  },
+
+  // ✅ Fires when user replies to the team selection prompt
+  onReply: async function({ api, event, Reply, usersData }) {
+    const { senderID, threadID, messageID } = event;
+
+    // Only the original bettor can reply
+    if (senderID !== Reply.authorID)
+      return;
+
+    const home = teams[Reply.homeIdx];
+    const away = teams[Reply.awayIdx];
+    const sel = (event.body || "").trim().toLowerCase();
+
+    let userTeam = null;
+    if (sel === "1") userTeam = home;
+    else if (sel === "2") userTeam = away;
+    else userTeam = teams.find(t =>
+      t.name.toLowerCase() === sel || t.flag === sel
+    );
+
+    if (!userTeam) {
+      return api.sendMessage(
+        `❌ ${f("Invalid team! Choose:")}\n` +
+        `1️⃣ ${home.flag} ${f(home.name)}\n` +
+        `2️⃣ ${away.flag} ${f(away.name)}\n` +
+        f("Or type name/flag."),
+        threadID, messageID
+      );
     }
 
-    // 🏁 Final Result
-    const finalMult = crashPoint === 1.00 ? 1.00 : (won ? targetMult : crashPoint);
-    const finalStatus = crashPoint === 1.00 ? "instant" : (won ? "won" : "crashed");
-    const winnings = won ? betAmount * targetMult - betAmount : -betAmount;
-    const newBalance = userData.money + winnings;
+    // Remove reply listener
+    global.GoatBot.onReply.delete(event.messageReply.messageID);
 
-    userData.data.betLimit.count += 1;
-    await usersData.set(senderID, { money: newBalance, data: userData.data });
+    let userData = await usersData.get(senderID);
+    if (!userData.data) userData.data = {};
+    if (!userData.data.betLimit) userData.data.betLimit = { lastReset: Date.now(), count: 0 };
 
-    const resultLine = won
-      ? `✅ ${f("Won:")} ${formatMoney(Math.abs(winnings))} ${f("(" + targetMult.toFixed(2) + "x)")}`
-      : `❌ ${f("Lost:")} ${formatMoney(betAmount)}`;
-
-    return api.editMessage(
-      buildFrame(betAmount, targetMult, finalMult, finalStatus) + "\n\n" +
-      `${resultLine}\n` +
-      `💰 ${f("Balance:")} ${formatMoney(newBalance)}\n` +
-      `📈 ${f("Daily:")} ${f(String(userData.data.betLimit.count))}/𝟐𝟎 ${f("Baby")}`,
-      msgID
-    );
+    return processBet(api, event, userData, Reply.betAmount, home, away, userTeam, usersData);
   }
 };
