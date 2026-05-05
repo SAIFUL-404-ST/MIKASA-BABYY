@@ -46,51 +46,123 @@ function formatMoney(amount) {
   return fancy(Math.floor(amount).toLocaleString());
 }
 
+const diceEmojis = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"]; // ১-৬
+
 module.exports = {
   config: {
     name: "dice",
-    aliases: [],
-    version: "2.1",
+    aliases: ["roll"],
+    version: "3.0",
     author: "SAIF",
     category: "game",
-    shortDescription: "🎲 roll a dice automatically with bet amount",
-    longDescription: "User gives amount, bot rolls dice automatically to see if user wins",
-    guide: { en: "{pn} <amount> - roll dice and bet automatically" },
+    countDown: 5,
+    description: "🎲 𝐋𝐔𝐂𝐊𝐘 𝐃𝐈𝐂𝐄 — 𝐖𝐇𝐄𝐄𝐋-𝐒𝐓𝐘𝐋𝐄 𝐁𝐀𝐁𝐘",
+    longDescription: "বেট করো, বট ডাইস রোল করবে। জ্যাকপট ৩x, ডাবল ২x, নো ম্যাচ লস। বড় বেট (>10M) ফোর্স লস।",
+    guide: "{pn} <amount> — যেমন {pn} 5m"
   },
 
-  onStart: async function({ message, event, args, usersData }) {
-    const user = event.senderID;
-    const userData = await usersData.get(user);
+  onStart: async function({ api, event, args, usersData }) {
+    const { senderID, threadID, messageID } = event;
 
+    // 👤 ইউজার ডাটা
+    let userData = await usersData.get(senderID);
+    if (!userData) userData = { money: 0 };
+
+    // 💵 বেট পার্স ও ভ্যালিডেশন
     const betInput = args[0];
     const betAmount = parseShorthand(betInput);
 
-    if (isNaN(betAmount) || betAmount <= 0) 
-      return message.reply(fancy("⚠️ ENTER A VALID AMOUNT."));
-    if (userData.money < betAmount) 
-      return message.reply(fancy("💰 NOT ENOUGH BALANCE."));
+    if (isNaN(betAmount) || betAmount <= 0)
+      return api.sendMessage(fancy("⚠️ ENTER A VALID AMOUNT."), threadID, messageID);
+    if (userData.money < betAmount)
+      return api.sendMessage(fancy("💰 NOT ENOUGH BALANCE."), threadID, messageID);
 
-    // বট অটোমেটিক ডাইস রোল করে
-    const diceNum = Math.floor(Math.random() * 6) + 1;
-    const rolledDice = Math.floor(Math.random() * 6) + 1;
-    const isWin = rolledDice === diceNum;
-    const winnings = isWin ? betAmount * 2 : -betAmount;
+    // 🎯 জেনারেট রেজাল্ট (wheel-এর মতো %)
+    const BET_CAP = 10_000_000;
+    let userDice, botDice, winnings, multiplier;
 
-    userData.money += winnings;
-    await usersData.set(user, userData);
+    if (betAmount > BET_CAP) {
+      // ফোর্স লস: বেটের ৫০-৯০% কেটে নেওয়া
+      const lossPercent = [50, 60, 80, 90][Math.floor(Math.random() * 4)];
+      do {
+        userDice = Math.floor(Math.random() * 6) + 1;
+        botDice = Math.floor(Math.random() * 6) + 1;
+      } while (userDice === botDice); // নো ম্যাচ
+      winnings = -(betAmount * lossPercent / 100);
+      multiplier = 0;
+    } else {
+      const roll = Math.random();
+      if (roll < 0.05) {
+        // ৫% জ্যাকপট: দুটো ৬ → ৩x
+        userDice = 6;
+        botDice = 6;
+        multiplier = 3;
+        winnings = betAmount * multiplier;
+      } else if (roll < 0.45) {
+        // ৪০% ডাবল: একই সংখ্যা (কিন্তু ৬ না)
+        const num = Math.floor(Math.random() * 5) + 1; // ১-৫
+        userDice = num;
+        botDice = num;
+        multiplier = 2;
+        winnings = betAmount * multiplier;
+      } else {
+        // ৫৫% লস: কোনও মিল নেই
+        do {
+          userDice = Math.floor(Math.random() * 6) + 1;
+          botDice = Math.floor(Math.random() * 6) + 1;
+        } while (userDice === botDice);
+        multiplier = 0;
+        winnings = -betAmount;
+      }
+    }
 
-    // আউটপুট ফর্ম্যাট (আগের মতই, কিন্তু fancy ও formatMoney সহ)
-    const resultMsg = [
-      `🎲 ${fancy("YOUR DICE:")} ${diceNum}`,
-      `🤖 ${fancy("ROLLED:")} ${rolledDice}`,
-      "",
-      isWin 
-        ? ` ${fancy("YOU WON")} ${formatMoney(betAmount)}!` 
-        : ` ${fancy("YOU LOST")} ${formatMoney(betAmount)}.`,
-      "",
-      ` ${fancy("BALANCE:")} ${formatMoney(userData.money)}`
-    ].join("\n");
+    const isWin = winnings > 0;
 
-    return message.reply(resultMsg);
+    // 🎬 অ্যানিমেশন (মেসেজ এডিট ৩ বার = ৪টি ফ্রেম)
+    const initMsg = await api.sendMessage(
+      `>🎀\n• ${fancy("Dice Rolling:")} [ ❓ | ❓ ]`,
+      threadID, messageID
+    );
+    const mid = initMsg.messageID;
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+    try {
+      // ফ্রেম ১: বটের ডাইস লক (ইউজার এখনও ❓)
+      await sleep(1600);
+      await api.editMessage(
+        `>🎀\n• ${fancy("Dice Rolling:")} [ ❓ | ${diceEmojis[botDice-1]} ]`,
+        mid
+      );
+
+      // ফ্রেম ২: ইউজারের ডাইস লক
+      await sleep(1600);
+      await api.editMessage(
+        `>🎀\n• ${fancy("Dice Rolling:")} [ ${diceEmojis[userDice-1]} | ${diceEmojis[botDice-1]} ]`,
+        mid
+      );
+
+      // ফাইনাল ফ্রেম: ফলাফল + ব্যালেন্স
+      await sleep(1600);
+      const amtFormatted = formatMoney(Math.abs(winnings));
+      const statusText = isWin
+        ? (multiplier === 3 ? fancy("🎉 JACKPOT WON") : fancy("🎈 DOUBLE WON"))
+        : betAmount > BET_CAP 
+          ? fancy("💸 FORCE LOST") 
+          : fancy("😞 LOST");
+
+      const balance = userData.money + winnings; // আগের থেকে বিয়োগ করা
+      await usersData.set(senderID, { money: balance });
+
+      await api.editMessage(
+        `>🎀\n` +
+        `• ${fancy("Baby, You")} ${statusText} $${amtFormatted}\n` +
+        `• ${fancy("Your Dice:")} ${diceEmojis[userDice-1]}\n` +
+        `• ${fancy("Bot Dice:")} ${diceEmojis[botDice-1]}\n` +
+        `• ${fancy("Balance:")} ${formatMoney(balance)}`,
+        mid
+      );
+    } catch (e) {
+      console.error("[dice] edit error:", e);
+    }
   }
 };
