@@ -1,7 +1,3 @@
-const fs = require("fs-extra");
-const path = require("path");
-
-// Fancy Font Helper Baby - Bold Sans-Serif Style
 const fancy = (text) => {
   if (text === undefined || text === null) return "";
   const fonts = {
@@ -12,7 +8,6 @@ const fancy = (text) => {
   return String(text).split('').map(char => fonts[char] || char).join('');
 };
 
-// 💰 Standard Shorthand Parser Baby (Complete Edition)
 const parseAmount = (str) => {
   if (!str) return NaN;
   str = str.toLowerCase().replace(/\s+/g, "");
@@ -31,10 +26,8 @@ const parseAmount = (str) => {
   return parseFloat(str);
 };
 
-// 🏦 Standard Shorthand Formatter Baby (Complete Edition)
 function formatMoney(amount) {
   if (amount === undefined || amount === null || isNaN(amount)) return "0";
-  
   const units = [
     { v: 1e63, s: "𝐕𝐠" }, { v: 1e60, s: "𝐍𝐨𝐝" }, { v: 1e57, s: "𝐎𝐜𝐝" },
     { v: 1e54, s: "𝐒𝐩𝐝" }, { v: 1e51, s: "𝐒𝐱𝐝" }, { v: 1e48, s: "𝐐𝐢𝐝" },
@@ -50,14 +43,23 @@ function formatMoney(amount) {
   return fancy(Math.floor(amount).toLocaleString());
 }
 
-// 💖 Love-only wheel emojis (as requested)
 const wheelEmojis = ["❤️","🧡","💛","💚","💙","💜","🖤"];
+
+function randEmoji(exclude) {
+  let e;
+  do { e = wheelEmojis[Math.floor(Math.random() * wheelEmojis.length)]; } while (e === exclude);
+  return e;
+}
+
+function rnd() {
+  return wheelEmojis[Math.floor(Math.random() * wheelEmojis.length)];
+}
 
 module.exports = {
   config: {
     name: "wheel",
-    version: "10.0-love",
-    author: "Saif & Gemini",
+    version: "11.3",
+    author: "Saif",
     category: "game",
     countDown: 5,
     description: "🎡 𝐔𝐋𝐓𝐑𝐀-𝐖𝐇𝐄𝐄𝐋 𝐏𝐑𝐄𝐌𝐈𝐔𝐌 𝐁𝐀𝐁𝐘"
@@ -66,45 +68,48 @@ module.exports = {
   onStart: async function ({ api, event, args, usersData, role }) {
     const { senderID, threadID, messageID, mentions, messageReply } = event;
     const now = Date.now();
+    const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+    const MAX_SPINS = 20;
 
     // 🔄 Admin Refresh
     if (args[0] === "refresh" && role >= 2) {
-      let targetID = messageReply ? messageReply.senderID : (Object.keys(mentions).length > 0 ? Object.keys(mentions)[0] : args[1]);
+      let targetID = messageReply
+        ? messageReply.senderID
+        : Object.keys(mentions).length > 0
+        ? Object.keys(mentions)[0]
+        : args[1];
       if (!targetID) return api.sendMessage(fancy("❌ Usage: wheel refresh @tag or UID Baby"), threadID, messageID);
       let tData = await usersData.get(targetID);
       if (!tData.data) tData.data = {};
       tData.data.gameLimit = { lastReset: now, wheel: 0 };
       await usersData.set(targetID, { data: tData.data });
-      return api.sendMessage(fancy("✅ 𝐋𝐈𝐌𝐈𝐓 𝐑𝐄𝐅𝐑𝐄𝐒𝐇𝐄𝐃 𝐁𝐀𝐁𝐘! 🎀"), threadID, messageID);
+      return api.sendMessage(fancy("✅ Limit refreshed Baby! 🎀"), threadID, messageID);
     }
 
-    // 📖 First time rules (updated)
+    // 📖 First time rules
     let user = await usersData.get(senderID);
     if (!user.data) user.data = {};
 
     if (!user.data.wheelSeen) {
       user.data.wheelSeen = true;
       await usersData.set(senderID, { data: user.data });
-
-      const rulesMsg =
+      return api.sendMessage(
         `🎀 𝐖𝐇𝐄𝐄𝐋 — 𝐑𝐔𝐋𝐄𝐒 𝐁𝐀𝐁𝐘\n` +
         `━━━━━━━━━━━━━━━━━━━\n\n` +
         fancy(`📌 How To Play:\n`) +
         fancy(`Type: wheel [amount]\n`) +
         fancy(`Example: wheel 5m\n\n`) +
         fancy(`🎰 Symbols & Payouts:\n`) +
-        `• ${fancy("Any Triple (❤️❤️❤️, 🖤🖤🖤)")} → ×𝟑 ${fancy("(Jackpot)")}\n` +
-        `• ${fancy("Any Double (❤️❤️💛)")} → ×𝟐\n` +
+        `• ${fancy("Triple Match")} → ×𝟑 ${fancy("(Jackpot!)")}\n` +
+        `• ${fancy("Double Match")} → ×𝟐\n` +
         `• ${fancy("No Match")} → ${fancy("Lose Bet")}\n\n` +
-        fancy(`⏰ Daily Limit:\n`) +
-        fancy(`20 spins per 12 hours Baby.\n\n`) +
-        `✅ ${fancy("Rules seen! Now type")} ${fancy("wheel [amount]")} ${fancy("to play Baby.")}`;
-
-      return api.sendMessage(rulesMsg, threadID, messageID);
+        fancy(`⏰ 20 spins per 12 hours Baby.\n\n`) +
+        `✅ ${fancy("Now type wheel [amount] to play Baby.")}`,
+        threadID, messageID
+      );
     }
 
     // 🕐 12h reset
-    const TWELVE_HOURS = 12 * 60 * 60 * 1000;
     if (!user.data.gameLimit) user.data.gameLimit = {};
     if (!user.data.gameLimit.lastReset) {
       user.data.gameLimit = { lastReset: now, wheel: 0 };
@@ -112,97 +117,112 @@ module.exports = {
       user.data.gameLimit = { lastReset: now, wheel: 0 };
     }
 
-    if (user.data.gameLimit.wheel >= 20) {
+    // ⛔ Limit check
+    if (user.data.gameLimit.wheel >= MAX_SPINS) {
       const timeLeft = TWELVE_HOURS - (now - user.data.gameLimit.lastReset);
       const h = Math.floor(timeLeft / 3600000);
       const m = Math.floor((timeLeft % 3600000) / 60000);
       return api.sendMessage(
-        fancy(`⚠️ You have reached your limit of 20 spins!\n⏰ Reset in: ${h}h ${m}m`),
+        fancy(`⚠️ Spin limit reached! Resets in: ${h}h ${m}m`),
         threadID, messageID
       );
     }
 
     const betAmount = parseAmount(args[0]);
-    if (isNaN(betAmount) || betAmount <= 0) return api.sendMessage(fancy("⚠️ ENTER A VALID BET AMOUNT BABY."), threadID, messageID);
-    if (betAmount > user.money) return api.sendMessage(fancy("💰 NOT ENOUGH BALANCE BABY."), threadID, messageID);
+    if (isNaN(betAmount) || betAmount <= 0)
+      return api.sendMessage(fancy("⚠️ Enter a valid bet amount Baby."), threadID, messageID);
+    if (betAmount > user.money)
+      return api.sendMessage(fancy("💰 Not enough balance Baby."), threadID, messageID);
 
-    // Show spinning message
-    const loadingMsg = await api.sendMessage(fancy("🎰 Spinning... baby 🎀"), threadID, messageID);
-
+    // 🎯 Determine final result
     const BET_CAP = 10_000_000;
     let res, winnings;
 
     if (betAmount > BET_CAP) {
-      // Penalty: always lose, random 50–80% loss
-      const lossPercent = [50, 60, 70, 80][Math.floor(Math.random() * 4)];
+      const lossPercent = [50, 60, 80, 90][Math.floor(Math.random() * 4)];
       do {
-        res = [
-          wheelEmojis[Math.floor(Math.random() * wheelEmojis.length)],
-          wheelEmojis[Math.floor(Math.random() * wheelEmojis.length)],
-          wheelEmojis[Math.floor(Math.random() * wheelEmojis.length)]
-        ];
+        res = [rnd(), rnd(), rnd()];
       } while (res[0] === res[1] || res[1] === res[2] || res[0] === res[2]);
-      winnings = - (betAmount * lossPercent / 100);
+      winnings = -(betAmount * lossPercent / 100);
     } else {
-      // Normal: Win 45% (Jackpot 5%, Double 40%) | Loss 55%
       const roll = Math.random();
-      if (roll < 0.45) {
-        // Win branch
-        if (Math.random() < 5 / 45) { // Jackpot (triple)
-          const symbol = wheelEmojis[Math.floor(Math.random() * wheelEmojis.length)];
-          res = [symbol, symbol, symbol];
-          winnings = betAmount * 3;
-        } else { // Double
-          const symbol = wheelEmojis[Math.floor(Math.random() * wheelEmojis.length)];
-          const pos = Math.floor(Math.random() * 3);
-          if (pos === 0) res = [wheelEmojis[Math.floor(Math.random() * wheelEmojis.length)], symbol, symbol];
-          else if (pos === 1) res = [symbol, wheelEmojis[Math.floor(Math.random() * wheelEmojis.length)], symbol];
-          else res = [symbol, symbol, wheelEmojis[Math.floor(Math.random() * wheelEmojis.length)]];
-          winnings = betAmount * 2;
-        }
+      if (roll < 0.05) {
+        const symbol = rnd();
+        res = [symbol, symbol, symbol];
+        winnings = betAmount * 3;
+      } else if (roll < 0.40) {
+        const symbol = rnd();
+        const odd = randEmoji(symbol);
+        const pos = Math.floor(Math.random() * 3);
+        if (pos === 0) res = [odd, symbol, symbol];
+        else if (pos === 1) res = [symbol, odd, symbol];
+        else res = [symbol, symbol, odd];
+        winnings = betAmount * 2;
       } else {
-        // Loss
         do {
-          res = [
-            wheelEmojis[Math.floor(Math.random() * wheelEmojis.length)],
-            wheelEmojis[Math.floor(Math.random() * wheelEmojis.length)],
-            wheelEmojis[Math.floor(Math.random() * wheelEmojis.length)]
-          ];
+          res = [rnd(), rnd(), rnd()];
         } while (res[0] === res[1] || res[1] === res[2] || res[0] === res[2]);
         winnings = -betAmount;
       }
     }
 
-    // Update spins & balance
-    user.data.gameLimit.wheel += 1;
-    const newBalance = user.money + winnings;
-    await usersData.set(senderID, { money: newBalance, data: user.data });
+    // 🎬 Initial message
+    const initMsg = await api.sendMessage(
+      `>🎀\n• ${fancy("Game Results:")} [ ❓ | ❓ | ❓ ]`,
+      threadID, messageID
+    );
+    const mid = initMsg.messageID;
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-    // Format result (no name/balance/daily count)
-    const amtFormatted = formatMoney(Math.abs(winnings));
-    let statusText;
-    if (winnings > 0) {
-      statusText = (res[0] === res[1] && res[1] === res[2]) ? fancy("JACKPOT Won") : fancy("Won");
-    } else {
-      statusText = fancy("Lost");
-    }
+    try {
+      // Frame 1 — slot 1 locks in, slots 2&3 still spinning
+      await sleep(1400);
+      await api.editMessage(
+        `>🎀\n• ${fancy("Game Results:")} [ ${res[0]} | ❓ | ❓ ]`,
+        mid
+      );
 
-    const resultMsg =
-      ">🎀\n" +
-      `• ${fancy("Baby, You")} ${statusText} $${amtFormatted}\n` +
-      `• ${fancy("Game Results:")} [ ${res[0]} | ${res[1]} | ${res[2]} ]`;
+      // Frame 2 — slot 2 locks in, slot 3 still spinning
+      await sleep(1400);
+      await api.editMessage(
+        `>🎀\n• ${fancy("Game Results:")} [ ${res[0]} | ${res[1]} | ❓ ]`,
+        mid
+      );
 
-    // 🕓 4-second spinning delay then edit
-    setTimeout(async () => {
-      try {
-        await api.editMessage(resultMsg, loadingMsg.messageID);
-        // Auto-unsend after 1 minute from edit (you can adjust)
-        setTimeout(() => {
-          api.unsendMessage(loadingMsg.messageID).catch(() => {});
-        }, 60000);
-      } catch (e) {
-        console.error(e);
+      // Frame 3 — all slots locked
+      await sleep(1400);
+      await api.editMessage(
+        `>🎀\n• ${fancy("Game Results:")} [ ${res[0]} | ${res[1]} | ${res[2]} ]`,
+        mid
+      );
+
+      await sleep(1400);
+
+      // 💾 Save
+      user.data.gameLimit.wheel += 1;
+      const newBalance = user.money + winnings;
+      await usersData.set(senderID, { money: newBalance, data: user.data });
+
+      // 📋 Final result
+      const amtFormatted = formatMoney(Math.abs(winnings));
+      let statusText;
+      if (winnings > 0) {
+        statusText = (res[0] === res[1] && res[1] === res[2])
+          ? fancy("JACKPOT Won")
+          : fancy("Won");
+      } else {
+        statusText = fancy("Lost");
       }
-    }, 4000);
+
+      await api.editMessage(
+        `>🎀\n` +
+        `• ${fancy("Baby, You")} ${statusText} $${amtFormatted}\n` +
+        `• ${fancy("Game Results:")} [ ${res[0]} | ${res[1]} | ${res[2]} ]`,
+        mid
+      );
+
+    } catch (e) {
+      console.error("[wheel] error:", e);
+    }
   }
 };
