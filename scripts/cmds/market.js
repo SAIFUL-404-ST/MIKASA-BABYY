@@ -178,7 +178,7 @@ module.exports = {
         `💰 ${fancy("Balance:")} ${formatMoney(user.money || 0)}\n` +
         `📊 ${fancy("Actions:")} ${limit.count}/${DAILY_LIMIT}\n` +
         `⏰ ${fancy("Reset in:")} ${h}h ${m}m\n` +
-        `🎯 ${fancy("Win rate:")} 35%`;
+        `🎯 ${fancy("Win rate:")} ❓%`;
       return api.sendMessage(msg, threadID, messageID);
     }
 
