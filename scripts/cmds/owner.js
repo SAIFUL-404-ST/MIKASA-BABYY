@@ -34,7 +34,7 @@ module.exports = {
         github: 'github.com/mikasa-4x'
       };
 
-      const videoUrl = 'https://files.catbox.moe/c6l25i.mp4';
+      const videoUrl = 'https://files.catbox.moe/463j4x.mp4';
 
       // Step 2: Download the video
       const res = await axios.get(videoUrl, { responseType: 'arraybuffer' });
