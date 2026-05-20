@@ -18,7 +18,7 @@ module.exports = {
     const owner = {
       fullName:  "Mohammad Saiful Islam",
       nickname:  "Saif",
-      birthday:  "25 January 2005",
+      birthday:  "25 January",
       blood:     "O+",
       city:      "Gaibandha, Bangladesh",
       hobby:     "Tourism ",
@@ -64,7 +64,7 @@ module.exports = {
     const date = now.format('DD MMMM YYYY');
     const time = now.format('hh:mm:ss A');
 
-    const link = "https://files.catbox.moe/463j4x.mp4";
+    const link = "https://files.catbox.moe/pl93i0.mp4";
 
     const body =
 `╔══════════════════════╗
