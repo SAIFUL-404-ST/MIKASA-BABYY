@@ -116,7 +116,7 @@ module.exports.onChat = async ({ api, event, message }) => {
       body.startsWith("bby") ||
       body.startsWith("bot") ||
       body.startsWith("jan") ||
-      body.startsWith("janu") ||
+      body.startsWith("bbu") ||
       body.startsWith("mikasa") ||
       body.startsWith("hi") ||
       body.startsWith("hello") ||
@@ -167,7 +167,7 @@ module.exports.onChat = async ({ api, event, message }) => {
 
         return api.sendMessage(msg, event.threadID, (error, info) => {
 
-          api.setMessageReaction("😽", event.messageID, () => {}, true);
+          api.setMessageReaction("😻", event.messageID, () => {}, true);
 
           global.GoatBot.onReply.set(info.messageID, {
             commandName: "bby",
@@ -184,7 +184,7 @@ module.exports.onChat = async ({ api, event, message }) => {
 
       return api.sendMessage(a, event.threadID, (error, info) => {
 
-        api.setMessageReaction("😽", event.messageID, () => {}, true);
+        api.setMessageReaction("😻", event.messageID, () => {}, true);
 
         global.GoatBot.onReply.set(info.messageID, {
           commandName: "bby",
