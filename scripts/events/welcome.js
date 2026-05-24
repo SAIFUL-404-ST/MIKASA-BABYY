@@ -57,7 +57,7 @@ module.exports = {
       const threadInfo = await api.getThreadInfo(threadID).catch(() => null);
       if (!threadInfo) return;
 
-      const botJoinMedia = await getStreamFromURL("https://files.catbox.moe/juupsu.mp4").catch(() => null);
+      const botJoinMedia = await getStreamFromURL("https://files.catbox.moe/nnbnaa.mp4").catch(() => null);
 
       return message.send({
         body:
@@ -376,7 +376,7 @@ async function buildWelcomeCard({ memberName, memberUID, adderName, adderUID, gr
   ctx.fillStyle = "rgba(255,255,255,0.3)";
   ctx.font = "11px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("💫  Enjoy Your Stay Here  •  TAMIM BOT", W / 2, H - 32);
+  ctx.fillText("💫  Enjoy Your Stay Here  •  MIKASA BBY ", W / 2, H - 32);
   ctx.restore();
 
   // ── Bottom accent bar ──
