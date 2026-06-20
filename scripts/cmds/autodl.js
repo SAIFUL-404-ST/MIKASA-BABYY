@@ -1,93 +1,144 @@
 const axios = require("axios");
 const fs = require("fs-extra");
+const path = require("path");
+const { pipeline } = require("stream");
+const { promisify } = require("util");
+const streamPipeline = promisify(pipeline);
 
-const baseApiUrl = async () => {
-  const base = await axios.get(`https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json`);
-  return base.data.api;
-};
+const DOMAINS = [
+  "facebook.com", "fb.watch", "fb.com", "youtube.com", "youtu.be",
+  "tiktok.com", "instagram.com", "instagr.am", "spotify.com",
+  "soundcloud.com", "twitter.com", "x.com", "pinterest.com",
+  "pin.it", "likee.com", "likee.video"
+];
 
-const config = {
-  name: "autodl",
-  version: "2.0",
-  author: "Dipto",
-  credits: "Dipto",
-  description: "Auto download video from tiktok, facebook, Instagram, YouTube, and more",
-  category: "media",
-  commandCategory: "media",
-  usePrefix: true,
-  prefix: true,
-  dependencies: {
-    "fs-extra": "",
-    "axios": ""
-  },
-};
-
-const onStart = () => {};
-const onChat = async ({ api, event }) => {
-  let dipto = event.body ? event.body : "", ex, cp;
-  try {
-    if (
-      dipto.startsWith("https://vt.tiktok.com") ||
-      dipto.startsWith("https://www.tiktok.com/") ||
-      dipto.startsWith("https://www.facebook.com") ||
-      dipto.startsWith("https://www.instagram.com/") ||
-      dipto.startsWith("https://youtu.be/") ||
-      dipto.startsWith("https://youtube.com/") ||
-      dipto.startsWith("https://x.com/") ||
-      dipto.startsWith("https://www.instagram.com/p/") ||
-      dipto.startsWith("https://pin.it/") ||
-      dipto.startsWith("https://twitter.com/") ||
-      dipto.startsWith("https://vm.tiktok.com") ||
-      dipto.startsWith("https://fb.watch")
-    ) {
-      api.setMessageReaction("⌛", event.messageID, {}, true);
-      const w = await api.sendMessage("Wait Bby <😘", event.threadID);
-      const apiUrl = await baseApiUrl();
-      const response = await axios.get(`${apiUrl}/alldl?url=${encodeURIComponent(dipto)}`);
-      const d = response.data;
-      
-      if (d.result.includes(".jpg")) {
-        ex = ".jpg";
-        cp = "Here's your Photo <😘";
-      } else if (d.result.includes(".png")) {
-        ex = ".png";
-        cp = "Here's your Photo <😘";
-      } else if (d.result.includes(".jpeg")) {
-        ex = ".jpeg";
-        cp = "Here's your Photo <😘";
-      } else {
-        ex = ".mp4";
-        cp = d.cp;
-      }
-      
-      const path = __dirname + `/cache/video${ex}`;
-      const videoBuffer = (await axios.get(d.result, { responseType: "arraybuffer" })).data;
-      fs.writeFileSync(path, Buffer.from(videoBuffer, "binary"));
-      
-      const tinyUrlResponse = await axios.get(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(d.result)}`);
-      
-      api.setMessageReaction("✅", event.messageID, {}, true);
-      api.unsendMessage(w.messageID);
-      
-      await api.sendMessage({
-          body: `${d.cp || ""}\n✅ | Link: ${tinyUrlResponse.data || ""}`,
-          attachment: fs.createReadStream(path),
-        }, event.threadID, () => {
-          if (fs.existsSync(path)) fs.unlinkSync(path);
-        }, event.messageID
-      );
-    }
-  } catch (err) {
-    api.setMessageReaction("❌", event.messageID, {}, true);
-    console.log(err);
-    api.sendMessage(`Error: ${err.message}`, event.threadID, event.messageID);
+function toSansSerifBoldItalic(str) {
+  const charMap = {};
+  for (let i = 0; i < 26; i++) {
+    charMap[String.fromCharCode(65 + i)] = String.fromCodePoint(0x1D63C + i);
+    charMap[String.fromCharCode(97 + i)] = String.fromCodePoint(0x1D656 + i);
   }
-};
+  for (let i = 0; i < 10; i++) {
+    charMap[String.fromCharCode(48 + i)] = String.fromCodePoint(0x1D7EC + i);
+  }
+  let result = "";
+  for (const ch of str) {
+    result += charMap[ch] || ch;
+  }
+  return result;
+}
 
 module.exports = {
-  config,
-  onChat,
-  onStart,
-  run: onStart,
-  handleEvent: onChat,
+  config: {
+    name: "autodl",
+    version: "5.6",
+    author: "Saif",
+    role: 0,
+    category: "utility",
+    shortDescription: "𝐀𝐮𝐭𝐨 𝐌𝐞𝐝𝐢𝐚 𝐃𝐨𝐰𝐧𝐥𝐨𝐚𝐝𝐞𝐫",
+    longDescription: "𝐀𝐮𝐭𝐨 𝐝𝐞𝐭𝐞𝐜𝐭 + 𝐀𝐮𝐭𝐨 𝐃𝐨𝐰𝐧𝐥𝐨𝐚𝐝",
+    guide: { en: "𝐉𝐮𝐬𝐭 𝐬𝐞𝐧𝐝 𝐚 𝐥𝐢𝐧𝐤" }
+  },
+
+  onStart: async ({ api, event }) => {
+    return api.sendMessage("Send any media link to download automatically!", event.threadID);
+  },
+
+  onChat: async ({ api, event }) => {
+    const { body, threadID, messageID } = event;
+    if (!body || !body.includes("http")) return;
+
+    const isLink = DOMAINS.some(d => body.toLowerCase().includes(d));
+    if (!isLink) return;
+
+    api.setMessageReaction("⌛", messageID, () => {}, true);
+
+    const waitMsg = await api.sendMessage(
+      toSansSerifBoldItalic("Wait Bby <😘"),
+      threadID
+    );
+
+    try {
+      const apiUrl = `https://xsaim8x-xxx-api.onrender.com/api/auto?url=${encodeURIComponent(body)}`;
+      const resData = await axios.get(apiUrl);
+      const data = resData.data;
+
+      const mediaURL = data.high_quality || data.url || (data.result && data.result.url) || (data.data && data.data.url);
+      if (!mediaURL) {
+        api.setMessageReaction("⚠️", messageID, () => {}, true);
+        api.unsendMessage(waitMsg.messageID);
+        return;
+      }
+
+      const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+      const isImage = imageExtensions.some(ext => mediaURL.toLowerCase().includes(ext));
+      const isAudio = body.includes("spotify") || body.includes("soundcloud") || mediaURL.includes(".mp3");
+      const ext = isImage ? mediaURL.split('.').pop().split('?')[0] : (isAudio ? "mp3" : "mp4");
+
+      const cacheDir = path.join(__dirname, "cache");
+      const filePath = path.join(cacheDir, `${Date.now()}.${ext}`);
+      await fs.ensureDir(cacheDir);
+
+      const response = await axios({
+        method: "get",
+        url: mediaURL,
+        responseType: "stream",
+        headers: { "User-Agent": "Mozilla/5.0" }
+      });
+
+      const writer = fs.createWriteStream(filePath);
+      await streamPipeline(response.data, writer);
+
+      let platform = "Media";
+      if (body.includes("facebook") || body.includes("fb")) platform = "Facebook";
+      else if (body.includes("youtube") || body.includes("youtu")) platform = "YouTube";
+      else if (body.includes("tiktok")) platform = "TikTok";
+      else if (body.includes("instagram")) platform = "Instagram";
+      else if (body.includes("spotify")) platform = "Spotify";
+      else if (body.includes("soundcloud")) platform = "SoundCloud";
+      else if (body.includes("twitter") || body.includes("x.com")) platform = "Twitter";
+      else if (body.includes("pinterest") || body.includes("pin.it")) platform = "Pinterest";
+      else if (body.includes("likee")) platform = "Likee";
+
+      let coolMsg;
+      if (isImage) {
+        coolMsg = "Here's your Photo <😘";
+      } else {
+        coolMsg = `Here's your ${platform} ${isAudio ? "audio" : "video"} <😘`;
+      }
+      const styledMsg = toSansSerifBoldItalic(coolMsg);
+
+      let shortLink = "";
+      try {
+        const tinyRes = await axios.get(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(mediaURL)}`);
+        shortLink = tinyRes.data;
+      } catch (e) {
+        shortLink = mediaURL;
+      }
+
+      const finalMessage = `${styledMsg}\n✅ | Link: ${shortLink}`;
+
+      // ✅ Wait message unsend করার পরই ভিডিও/ছবি সেন্ড হবে
+      api.unsendMessage(waitMsg.messageID);
+      api.setMessageReaction("✅", messageID, () => {}, true);
+
+      await api.sendMessage(
+        {
+          body: finalMessage,
+          attachment: fs.createReadStream(filePath)
+        },
+        threadID,
+        () => {
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        },
+        messageID
+      );
+
+    } catch (error) {
+      console.error("DL Error:", error.message);
+      api.setMessageReaction("❌", messageID, () => {}, true);
+      api.unsendMessage(waitMsg.messageID);
+      api.sendMessage(`Error: ${error.message}`, threadID, messageID);
+    }
+  }
 };
