@@ -9,7 +9,7 @@ module.exports.config = {
     name: 'font',
     aliases: ['style'],
     version: '1.0',
-    role: 0,
+    role: 2,
     countDowns: 5,
     author: 'dipto',
     description: 'This command transforms text with different fonts',
