@@ -1,81 +1,320 @@
-const axios = require('axios');
-const yts = require("yt-search");
-const fs = require("fs");
-const path = require("path");
-const { performance } = require('perf_hooks');
+"use strict";
 
-const formatText = (text) => {
-  const mapping = {
-    'a': '𝐚', 'b': '𝐛', 'c': '𝐜', 'd': '𝐝', 'e': '𝐞', 'f': '𝐟', 'g': '𝐠', 'h': '𝐡', 'i': '𝐢', 'j': '𝐣', 'k': '𝐤', 'l': '𝐥', 'm': '𝐦', 'n': '𝐧', 'o': '𝐨', 'p': '𝐩', 'q': '𝐪', 'r': '𝐫', 's': '𝐬', 't': '𝐭', 'u': '𝐮', 'v': '𝐯', 'w': '𝐰', 'x': '𝐱', 'y': '𝐲', 'z': '𝐳',
-    'A': '𝐀', 'B': '𝐁', 'C': '𝐂', 'D': '𝐃', 'E': '𝐄', 'F': '𝐅', 'G': '𝐆', 'H': '𝐇', 'I': '𝐈', 'J': '𝐉', 'K': '𝐊', 'L': '𝐋', 'M': '𝐌', 'N': '𝐍', 'O': '𝐎', 'P': '𝐏', 'Q': '𝐐', 'R': '𝐑', 'S': '𝐒', 'T': '𝐓', 'U': '𝐔', 'V': '𝐕', 'W': '𝐖', 'X': '𝐗', 'Y': '𝐘', 'Z': '𝐙',
-    '0': '𝟎', '1': '𝟏', '2': '𝟐', '3': '𝟑', '4': '𝟒', '5': '𝟓', '6': '𝟔', '7': '𝟕', '8': '𝟖', '9': '𝟗'
-  };
-  return text.split('').map(char => mapping[char] || char).join('');
+const axios = require("axios");
+const fs = require('fs-extra');
+const path = require('path');
+const yts = require('yt-search');
+const { Transform } = require("stream");
+const { pipeline } = require("stream/promises");
+
+const REACT = {
+	loading: "🐤",
+	success: "🪶",
+	error: "❌",
 };
+
+const AUDIO_API = "https://yt-song-api.vercel.app/api/song";
+const VIDEO_API = "https://video-dl-api-tan.vercel.app";
+const MAX_FILE_SIZE = 25 * 1024 * 1024;
+const VIDEO_QUALITY = "720";
+
+function isTrustedAudioHost(hostname) {
+	return hostname === "vidssave.com" || hostname.endsWith(".vidssave.com") ||
+		hostname === "ymcdn.org" || hostname.endsWith(".ymcdn.org") ||
+		hostname === "googlevideo.com" || hostname.endsWith(".googlevideo.com");
+}
+
+function getAudioUrl(data) {
+	const value = data && (data.download || data.audio_url);
+	if (!value) return null;
+
+	try {
+		const url = new URL(value);
+		return url.protocol === "https:" && isTrustedAudioHost(url.hostname) ? url.toString() : null;
+	} catch {
+		return null;
+	}
+}
+
+function fileSizeGuard(maxBytes) {
+	let received = 0;
+	return new Transform({
+		transform(chunk, _encoding, callback) {
+			received += chunk.length;
+			if (received > maxBytes) {
+				const error = new Error("File is too large to send on Messenger");
+				error.code = "SONG_TOO_LARGE";
+				return callback(error);
+			}
+			callback(null, chunk);
+		}
+	});
+}
+
+async function removeFile(filePath) {
+	if (!filePath) return;
+	await fs.promises.unlink(filePath).catch(() => {});
+}
+
+function sendMessageAsync(api, msgObj, threadID, messageID) {
+	return new Promise((resolve, reject) => {
+		api.sendMessage(msgObj, threadID, (err, info) => {
+			if (err) return reject(err instanceof Error ? err : new Error(String(err)));
+			resolve(info);
+		}, messageID);
+	});
+}
 
 module.exports = {
-  config: {
-    name: "sing",
-    aliases: ["song"],
-    version: "1.1.0",
-    author: "bayjid+saif",
-    category: "music",
-    shortDescription: "Fast Download with React",
-    guide: "{pn} <song name>"
-  },
+	config: {
+		name: "sing",
+		aliases: ["music", "play"],
+		version: "2.1.1",
+		author: "Arafat",
+		countDown: 10,
+		role: 0,
+		description: {
+			vi: "Tự động tìm và gửi bài hát gốc từ YouTube",
+			en: "Automatically find and send the original song from YouTube"
+		},
+		category: "media",
+		guide: {
+			vi: "   {pn} <tên bài hát>: gửi audio bài hát gốc"
+				+ "\n   {pn} -v <tên bài hát>: gửi video bài hát gốc"
+				+ "\n   Ví dụ:"
+				+ "\n    {pn} pal pal"
+				+ "\n    {pn} -v pal pal",
+			en: "   {pn} <song name> → Audio"
+				+ "\n   {pn} -v <song name> → Video"
+				+ "\n   Example:"
+				+ "\n    {pn} pal pal"
+				+ "\n    {pn} -v pal pal"
+		}
+	},
 
-  onStart: async function ({ api, event, args, usersData }) {
-    const start = performance.now();
-    try {
-      const COST = 500;
-      const sender = event.senderID;
-      const name = await usersData.getName(sender);
-      let user = await usersData.get(sender);
+	langs: {
+		vi: {
+			error: "❌ | Không thể tải xuống. Vui lòng thử lại.",
+			noResult: "⭕ Không có kết quả tìm kiếm nào phù hợp với từ khóa %1"
+		},
+		en: {
+			error: "❌ | Could not download. Please try again.",
+			noResult: "⭕ No search results match the keyword %1"
+		}
+	},
 
-      if ((user.money || 0) < COST) {
-        return api.sendMessage(`‎🎀\n > ${name}\n\n` + formatText(`• Baby, You need ${COST} coin to use this command! Use daily /quiz and Other game and come again!`), event.threadID, event.messageID);
-      }
+	onStart: async function ({ api, args, event, message, getLang }) {
+		const { threadID, messageID, senderID } = event;
 
-      if (!args[0]) return api.sendMessage(formatText("• Type a song name, Baby!"), event.threadID, event.messageID);
+		let type = "audio";
+		if (args[0] === "-v" || args[0] === "video") {
+			type = "video";
+			args.shift();
+		} else if (args[0] === "-a" || args[0] === "audio") {
+			args.shift();
+		}
 
-      api.setMessageReaction("⏳", event.messageID, (err) => {}, true);
+		const input = args.join(" ");
+		if (!input) {
+			return message.reply("📌 Usage:\nsing <song name> → Audio\nsing -v <title> → Video");
+		}
 
-      const vID = args[0].match(/(?:v=|\/)([0-9A-Za-z_-]{11})/) ? args[0].match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)[1] : (await yts(args.join(" "))).videos[0]?.videoId;
-      
-      if (!vID) {
-        api.setMessageReaction("❌", event.messageID, (err) => {}, true);
-        return api.sendMessage(formatText("• Not found, Baby!"), event.threadID, event.messageID);
-      }
+		if (type === "audio") {
+			return handleAudioDownload(api, threadID, messageID, senderID, input, getLang);
+		}
 
-      await usersData.set(sender, { ...user, money: user.money - COST });
+		const checkurl = /^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))((\w|-){11})(?:\S+)?$/;
 
-      const { data } = await axios.get(`https://www.noobs-api.top/dipto/ytDl3?link=${vID}&format=mp3`);
-      if (!data.downloadLink) throw new Error();
+		api.setMessageReaction(REACT.loading, messageID, () => {}, true);
 
-      const tmp = path.join(__dirname, `cache`, `${Date.now()}.mp3`);
-      if (!fs.existsSync(path.join(__dirname, `cache`))) fs.mkdirSync(path.join(__dirname, `cache`));
+		if (checkurl.test(input)) {
+			const videoID = input.match(checkurl)[1];
+			return handleDownload(api, threadID, messageID, videoID, type, getLang);
+		}
 
-      const res = await axios({ url: data.downloadLink, method: "GET", responseType: "stream" });
-      const stream = res.data.pipe(fs.createWriteStream(tmp));
+		try {
+			const { videos } = await yts(`${input} official`);
+			if (!videos || videos.length === 0) {
+				api.setMessageReaction(REACT.error, messageID, () => {}, true);
+				return api.sendMessage(getLang("noResult", input), threadID, messageID);
+			}
 
-      stream.on("finish", () => {
-        api.setMessageReaction("✅", event.messageID, (err) => {}, true);
-        
-        const time = ((performance.now() - start) / 1000).toFixed(2);
-        const msg = `‎🎀\n > ${name}\n\n` +
-          `• ` + formatText(`Baby, Your Song is Ready!`) + `\n` +
-          `• ` + formatText(`Deducted: ${COST}`) + `\n` +
-          `• ` + formatText(`Balance: ${user.money - COST}`) + `\n` +
-          `• ` + formatText(`Time: ${time}s Baby`);
+			const results = videos.map(v => ({ id: v.videoId, title: v.title }));
+			const videoID = pickBestResult(results, input).id;
+			return handleDownload(api, threadID, messageID, videoID, type, getLang);
 
-        api.sendMessage({ body: msg, attachment: fs.createReadStream(tmp) }, event.threadID, () => {
-          if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
-        }, event.messageID);
-      });
-
-    } catch (e) {
-      api.setMessageReaction("❌", event.messageID, (err) => {}, true);
-      api.sendMessage(formatText("• Error processing, Baby!"), event.threadID, event.messageID);
-    }
-  }
+		} catch (e) {
+			api.setMessageReaction(REACT.error, messageID, () => {}, true);
+			return api.sendMessage(getLang("error"), threadID, messageID);
+		}
+	}
 };
+
+function pickBestResult(results, query) {
+	const q = query.toLowerCase();
+
+	const officialClean = results.find(r => {
+		const title = (r.title || "").toLowerCase();
+		return title.includes(q) && title.includes("official")
+			&& !title.includes("audio") && !title.includes("lyric");
+	});
+	if (officialClean) return officialClean;
+
+	const cleanMatch = results.find(r => {
+		const title = (r.title || "").toLowerCase();
+		return title.includes(q) && !title.includes("audio") && !title.includes("lyric");
+	});
+	if (cleanMatch) return cleanMatch;
+
+	const exactMatch = results.find(r => (r.title || "").toLowerCase().includes(q));
+	if (exactMatch) return exactMatch;
+
+	return results[0];
+}
+
+async function handleAudioDownload(api, threadID, messageID, senderID, songName, getLang) {
+	api.setMessageReaction(REACT.loading, messageID, () => {}, true);
+	const CACHE_DIR = path.join(__dirname, 'cache');
+	let filePath;
+
+	try {
+		const { data } = await axios.get(
+			AUDIO_API,
+			{
+				params: { q: `${songName} official` },
+				timeout: 45000,
+				headers: { Accept: "application/json" }
+			}
+		);
+		const audioUrl = getAudioUrl(data);
+		if (!data || !data.success || !audioUrl) {
+			api.setMessageReaction(REACT.error, messageID, () => {}, true);
+			return api.sendMessage(getLang("noResult", songName), threadID, messageID);
+		}
+
+		await fs.promises.mkdir(CACHE_DIR, { recursive: true });
+		const extension = ["mp3", "m4a", "mp4"].includes(data.format) ? data.format : "mp3";
+		filePath = path.join(
+			CACHE_DIR,
+			`sing_${senderID || "user"}_${Date.now()}.${extension}`
+		);
+
+		const response = await axios.get(audioUrl, {
+			responseType: "stream",
+			timeout: 90000,
+			maxRedirects: 3,
+			beforeRedirect: (options) => {
+				if (options.protocol !== "https:" || !isTrustedAudioHost(options.hostname)) {
+					throw new Error("Blocked an untrusted audio redirect");
+				}
+			},
+			headers: {
+				Accept: "audio/mpeg,audio/mp4,audio/*;q=0.9,*/*;q=0.1",
+				"User-Agent": "Mozilla/5.0"
+			}
+		});
+
+		const declaredSize = Number(response.headers["content-length"] || 0);
+		if (declaredSize > MAX_FILE_SIZE) {
+			response.data.destroy();
+			const error = new Error("Song is too large to send on Messenger");
+			error.code = "SONG_TOO_LARGE";
+			throw error;
+		}
+
+		const contentType = String(response.headers["content-type"] || "").toLowerCase();
+		if (contentType && !contentType.startsWith("audio/") && contentType !== "application/octet-stream") {
+			response.data.destroy();
+			throw new Error("Song provider returned an invalid audio file");
+		}
+
+		await pipeline(
+			response.data,
+			fileSizeGuard(MAX_FILE_SIZE),
+			fs.createWriteStream(filePath, { flags: "wx" })
+		);
+
+		const body = `✅ | 𝐇𝐞𝐫𝐞'𝐬 𝐲𝐨𝐮𝐫 𝐫𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐬𝐨𝐧𝐠\n➡️ ${data.title || "Unknown"}`;
+
+		await sendMessageAsync(api, {
+			body,
+			attachment: fs.createReadStream(filePath)
+		}, threadID, messageID);
+
+		api.setMessageReaction(REACT.success, messageID, () => {}, true);
+	} catch (err) {
+		api.setMessageReaction(REACT.error, messageID, () => {}, true);
+		if (err.code === "SONG_TOO_LARGE") {
+			return api.sendMessage("❌ | This song is over 25 MB, so Messenger cannot send it.", threadID, messageID);
+		}
+		if (err.code === "ECONNABORTED") {
+			return api.sendMessage("❌ | Song request timed out. Please try again.", threadID, messageID);
+		}
+		return api.sendMessage(getLang("error"), threadID, messageID);
+	} finally {
+		await removeFile(filePath);
+	}
+}
+
+async function handleDownload(api, threadID, messageID, videoID, type, getLang) {
+	const format = 'mp4';
+	const cacheDir = path.join(__dirname, 'cache');
+	if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+
+	const filePath = path.join(cacheDir, `sing_${Date.now()}.${format}`);
+	const youtubeUrl = `https://www.youtube.com/watch?v=${videoID}`;
+
+	let title = "Unknown";
+	try {
+		const { data } = await axios.get(`${VIDEO_API}/download`, {
+			params: { url: youtubeUrl },
+			timeout: 45000
+		});
+		title = data.title || data.filename || data.name || "Unknown";
+	} catch (_) {}
+
+	try {
+		const streamUrl = `${VIDEO_API}/stream?url=${encodeURIComponent(youtubeUrl)}&type=video&quality=${VIDEO_QUALITY}`;
+		const response = await axios.get(streamUrl, {
+			responseType: "stream",
+			timeout: 90000,
+			headers: { Accept: "video/mp4,video/*;q=0.9,*/*;q=0.1" }
+		});
+
+		const declaredSize = Number(response.headers["content-length"] || 0);
+		if (declaredSize > MAX_FILE_SIZE) {
+			response.data.destroy();
+			const error = new Error("Video is too large to send on Messenger");
+			error.code = "SONG_TOO_LARGE";
+			throw error;
+		}
+
+		const contentType = String(response.headers["content-type"] || "").toLowerCase();
+		if (contentType && !contentType.startsWith("video/") && contentType !== "application/octet-stream") {
+			response.data.destroy();
+			throw new Error("Video provider returned an invalid file");
+		}
+
+		await pipeline(
+			response.data,
+			fileSizeGuard(MAX_FILE_SIZE),
+			fs.createWriteStream(filePath, { flags: "w" })
+		);
+
+		const body = `• ✨𝐓𝐢𝐭𝐥𝐞: ${title}`;
+		await sendMessageAsync(api, {
+			body,
+			attachment: fs.createReadStream(filePath)
+		}, threadID, messageID);
+
+		api.setMessageReaction(REACT.success, messageID, () => {}, true);
+	} catch (err) {
+		api.setMessageReaction(REACT.error, messageID, () => {}, true);
+		if (err.code === "SONG_TOO_LARGE") {
+			return api.sendMessage("❌ | This video is over 25 MB, so Messenger cannot send it.", threadID, messageID);
+		}
+		return api.sendMessage(getLang("error"), threadID, messageID);
+	} finally {
+		await removeFile(filePath);
+	}
+                        }
