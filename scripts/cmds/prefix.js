@@ -72,7 +72,7 @@ module.exports = {
 		if (event.body && event.body.toLowerCase() === "prefix") {
 
 			const adminName = " 𝐒𝐀𝐈𝐅 ";
-			const adminUID = "61554481313641";
+			const adminUID = "100081317798618";
 
 			const globalPrefix = global.GoatBot.config.prefix;
 			const groupPrefix = utils.getPrefix(event.threadID);
